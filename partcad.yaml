@@ -1,0 +1,85 @@
+# The Code_Aster implementations of PartCAD's structural and thermal analyses.
+#
+# The structure is identical to `//builtin/export` and `//builtin/render` -- see
+# `docs/source/config_output.rst` in the `partcad` repository for what each field
+# means. What makes these analyses is the section they are declared in: `cae:`.
+# Each writes binary glTF, the result being a 3D field the PartCAD Viewer turns
+# and zooms, and answers with `findings` beside it: an empty list is a pass, and
+# is what `pc test` requires.
+#
+# Code_Aster has no viscous flow solver -- EDF's is code_saturne -- so there is
+# no `cfd` here.
+
+name: //pub/feature/cae/code_aster
+desc: |
+  Static stress, modal and steady heat transfer analysis, by
+  [Code_Aster](https://www.code-aster.org/).
+
+  `fea` and `dynamic` hold what `fix:` names and solve on quadratic tetrahedra;
+  `thermal` holds, heats and cools what its keys name. Each answers with a
+  coloured model and measurements, and findings when a threshold is crossed.
+
+# What the scripts import. gmsh comes from pip on purpose: Code_Aster reads MED,
+# and pip's gmsh writes MED where a distribution's often does not. That is also
+# why this package has no arm64 story of its own -- neither pip's gmsh nor
+# conda-forge's Code_Aster is built for 64-bit ARM Linux.
+pythonRequirements:
+  - gmsh
+  - numpy
+
+cae:
+  fea:
+    desc: A linear static stress analysis, as a glTF coloured by von Mises stress plus findings.
+    path: fea_code_aster.py
+    extension: glb
+    dockerImage: ghcr.io/partcad/partcad-cae-code-aster:fdcebdb80b22
+
+    # The mesh: the largest tetrahedron as a fraction of the part's largest
+    # dimension, and quadratic elements, which a bending part needs.
+    mesh_size: 0.05
+    mesh_order: 2
+
+    # The material, when the package says nothing else: steel. Pascals, and
+    # kg/m^3. Note the signed exponents: YAML 1.1 reads `2.1e11` as a string.
+    youngs_modulus: 2.1e+11
+    poissons_ratio: 0.30
+    yield_strength: 2.5e+8
+    density: 7850
+
+    # What counts as a finding: a stress past the yield strength divided by
+    # `safety_factor`, and, when set, a displacement past `max_displacement` (mm).
+    safety_factor: 1.5
+    max_displacement: 1.0
+
+    # Whether the part's own weight acts on it too.
+    self_weight: true
+
+  dynamic:
+    desc: The natural frequencies of the part as it is held, as a glTF of its first mode shape plus findings.
+    path: dynamic_code_aster.py
+    extension: glb
+    dockerImage: ghcr.io/partcad/partcad-cae-code-aster:fdcebdb80b22
+    mesh_size: 0.05
+    mesh_order: 2
+    youngs_modulus: 2.1e+11
+    poissons_ratio: 0.30
+    density: 7850
+    # How many of the lowest modes to find.
+    modes: 6
+    # A first natural frequency under this (Hz) is a finding: the part would
+    # resonate with whatever drives it there. Unset by default -- what is too
+    # low depends on what the part is bolted to.
+    # min_frequency: 100
+
+  thermal:
+    desc: Steady heat conduction through the part, as a glTF coloured by temperature plus findings.
+    path: thermal_code_aster.py
+    extension: glb
+    dockerImage: ghcr.io/partcad/partcad-cae-code-aster:fdcebdb80b22
+    mesh_size: 0.05
+    mesh_order: 2
+    # W/(m*K), and the temperature (Celsius) that `convection:` cools towards.
+    conductivity: 50.0
+    ambient_temperature: 20.0
+    # A part hotter than this anywhere (Celsius) is a finding. Unset by default.
+    # max_temperature: 85
