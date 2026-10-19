@@ -17,6 +17,7 @@ sandbox helpers the scripts import; see `conftest.py`).
 """
 
 import math
+import os
 
 import numpy
 import pytest
@@ -58,6 +59,31 @@ def test_a_load_is_a_face_force_along_minus_z():
     assert "FORCE_FACE=(_F(GROUP_MA='LOAD0', FZ=-1000000),)" in comm
     assert "DDL_IMPO=_F(GROUP_MA=('FIX0'), DX=0.0, DY=0.0, DZ=0.0)" in comm
     assert "PESANTEUR" not in comm
+
+
+def test_a_load_with_a_direction_is_a_face_force_along_it():
+    comm = fea_code_aster._comm(
+        {"self_weight": False}, {"FIX0": [1]}, {"LOAD0": [2]}, [{"load": 5.0, "force": [3.0, 0.0, -4.0], "area": 1.0}]
+    )
+    # 3 N and -4 N over 1 mm^2; nothing along Y, so no FY at all.
+    assert "FORCE_FACE=(_F(GROUP_MA='LOAD0', FX=3000000, FZ=-4000000),)" in comm
+
+
+def test_the_part_is_weighed_under_the_gravity_it_states():
+    comm = fea_code_aster._comm({"gravity": [0.0, -6.0, -8.0]}, {"FIX0": [1]}, {}, [])
+    assert "PESANTEUR=_F(GRAVITE=10, DIRECTION=(0, -0.6, -0.8))" in comm
+    assert "_F(CHARGE=weight)" in comm
+    # Nought weighs nothing; no gravity stated is 9.81 down -Z.
+    assert "PESANTEUR" not in fea_code_aster._comm({"gravity": [0, 0, 0]}, {"FIX0": [1]}, {}, [])
+    assert "GRAVITE=9.81, DIRECTION=(0, 0, -1)" in fea_code_aster._comm({}, {"FIX0": [1]}, {}, [])
+
+
+def test_the_fea_file_type_says_it_reads_a_direction_and_a_gravity():
+    import yaml
+
+    with open(os.path.join(os.path.dirname(__file__), "partcad.yaml"), encoding="utf-8") as f:
+        declared = yaml.safe_load(f)["cae"]["fea"]
+    assert sorted(declared["reads"]) == ["force", "gravity"]
 
 
 def test_the_modal_study_asks_for_the_lowest_modes():

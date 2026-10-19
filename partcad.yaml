@@ -33,6 +33,13 @@ cae:
     path: fea_code_aster.py
     extension: glb
     dockerImage: ghcr.io/partcad/partcad-cae-code-aster:fdcebdb80b22
+    # What this implementation reads of a part's 'fea:' beyond where each
+    # condition lands and how big it is: a load's direction ('force', a load
+    # written as [x, y, z] in the part's frame) and the part's own 'gravity:'.
+    # PartCAD refuses to hand either to an implementation that does not say it
+    # reads it, rather than have it answered as if it had not been written --
+    # every load straight down, the part weighed the way it is drawn.
+    reads: [force, gravity]
 
     # The mesh: the largest tetrahedron as a fraction of the part's largest
     # dimension, and quadratic elements, which a bending part needs.
@@ -51,7 +58,8 @@ cae:
     safety_factor: 1.5
     max_displacement: 1.0
 
-    # Whether the part's own weight acts on it too.
+    # Whether the part's own weight acts on it too: 9.81 m/s^2 along -Z, unless
+    # the part states 'gravity:' in its 'fea:', which replaces this.
     self_weight: true
 
   dynamic:

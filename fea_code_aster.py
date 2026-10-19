@@ -6,9 +6,12 @@
 """`pc cae fea`, by Code_Aster: a linear static stress analysis of one part.
 
 `fix:` holds the faces its ports cover still in every direction (`DDL_IMPO`);
-`load:` spreads its force evenly over the faces its ports cover, along -Z
-(`FORCE_FACE`), which is where a weight goes; gravity acts on the part's own
-mass too, unless `self_weight` is off (`PESANTEUR`). `MECA_STATIQUE` solves it on
+`load:` spreads its force evenly over the faces its ports cover (`FORCE_FACE`):
+along the direction the part states, a load written as `[x, y, z]` in its own
+frame, and along -Z, where a weight goes, for a load written as a magnitude.
+Gravity acts on the part's own mass too (`PESANTEUR`): the `gravity:` the part
+states, in its own frame -- what a simulation found it under, `g - a` -- or
+9.81 m/s^2 along -Z unless `self_weight` is off. `MECA_STATIQUE` solves it on
 quadratic tetrahedra, and the answer is the von Mises stress at every node and
 how far each moved.
 """
@@ -67,14 +70,20 @@ def _analyse(path, request):
 
 def _comm(request, fixed, loaded, loaded_records):
     density = float(request.get("density", 7850))
-    gravity = 9.81 if request.get("self_weight", True) else 0.0
+    gravity = _gravity_of(request)
     faces = []
     for name, record in zip(loaded, loaded_records):
-        traction = float(record["load"]) / (float(record["area"]) * aster.M2_PER_MM2)
-        faces.append("_F(GROUP_MA=%r, FZ=%.10g)" % (name, -traction))
+        # A force on the port, spread over the area it covers: a traction, so a
+        # finer mesh does not load the part harder.
+        area = float(record["area"]) * aster.M2_PER_MM2
+        components = ", ".join(
+            "%s=%.10g" % (axis, value / area) for axis, value in zip(("FX", "FY", "FZ"), _force_of(record)) if value
+        )
+        faces.append("_F(GROUP_MA=%r, %s)" % (name, components or "FZ=0.0"))
     loads = "pulled = AFFE_CHAR_MECA(MODELE=model, FORCE_FACE=(%s,))\n" % ", ".join(faces) if faces else ""
     weight = (
-        "weight = AFFE_CHAR_MECA(MODELE=model, PESANTEUR=_F(GRAVITE=%.10g, DIRECTION=(0.0, 0.0, -1.0)))\n" % gravity
+        "weight = AFFE_CHAR_MECA(MODELE=model, PESANTEUR=_F(GRAVITE=%.10g, DIRECTION=(%.10g, %.10g, %.10g)))\n"
+        % ((gravity[0],) + gravity[1])
         if gravity
         else ""
     )
@@ -102,6 +111,33 @@ ANSWER = {
         weight,
         ", ".join(excitations),
     )
+
+
+def _force_of(record):
+    """The force on one loaded port, newtons in the part's frame: as stated, or its magnitude straight down."""
+    force = record.get("force")
+    if isinstance(force, (list, tuple)) and len(force) == 3:
+        return [float(component) for component in force]
+    return [0.0, 0.0, -float(record["load"])]
+
+
+def _gravity_of(request):
+    """The gravity the part is weighed under, '(m/s^2, unit direction)', or None to weigh it not at all.
+
+    The part's own `gravity:`, in its frame, where it stated one -- a gravity of
+    nought weighs nothing; otherwise 9.81 m/s^2 along -Z when `self_weight` is
+    on. `PESANTEUR` takes a magnitude and a direction, not a vector.
+    """
+    stated = request.get("gravity")
+    if isinstance(stated, (list, tuple)) and len(stated) == 3:
+        vector = [float(component) for component in stated]
+        magnitude = sum(component * component for component in vector) ** 0.5
+        if magnitude == 0.0:
+            return None
+        return magnitude, tuple(component / magnitude for component in vector)
+    if request.get("self_weight", True):
+        return 9.81, (0.0, 0.0, -1.0)
+    return None
 
 
 def _verdict(peak_stress, peak_displacement, request):
