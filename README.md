@@ -37,8 +37,8 @@ kilograms**, weighed at 9.8 N/kg: `hook: 5` is 49 N. A direction is three of tho
 simulation measured is in newtons, so write the unit: `[0, -2.7, -155.2]` would be read as 1.5 kN.
 
 `gravity:` is an acceleration, m/s² along each of the part's axes -- a number, or a string saying so
-(`9.81 m/s^2`). The part's own weight, its `density` times its volume, is taken under it instead of the
-9.81 m/s² along -Z that `self_weight` applies otherwise; a part's own weight is never a `load`.
+(`9.81 m/s^2`). The part's own weight is its mass, `density` times its volume, under that acceleration, in
+place of the 9.81 m/s² along -Z that `self_weight` applies otherwise; it is never a `load`.
 
 The model is `<part>.<analysis>.glb`, coloured by von Mises stress, by the first mode's displacement, or by
 temperature. A measurement line goes to the log, and **findings** fail `pc test`: a stress past the yield
