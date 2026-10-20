@@ -23,7 +23,7 @@ on.
 
 | analysis | section keys | Code_Aster |
 | --- | --- | --- |
-| `fea` | `fix:`, `load:` | `DDL_IMPO` on every displacement; `FORCE_FACE` along -Z, the force over the faces' area; `PESANTEUR` for the part's own weight; `MECA_STATIQUE` |
+| `fea` | `fix:`, `load:`, `gravity:` | `DDL_IMPO` on every displacement; `FORCE_FACE`, the force over the faces' area, along the direction the part states (`[x, y, z]` in its frame) or along -Z for a magnitude; `PESANTEUR` for the part's own weight, under the `gravity:` it states or 9.81 m/s² along -Z; `MECA_STATIQUE` |
 | `dynamic` | `fix:` | `DDL_IMPO`; stiffness and mass assembled; `CALC_MODES` for the lowest `modes` |
 | `thermal` | `temperature:`, `heat:`, `convection:` | `TEMP_IMPO` (C); `FLUX_REP`, the power over the faces' area; `ECHANGE` against `ambient_temperature`; `THER_LINEAIRE`, steady. Every other surface is insulated |
 
