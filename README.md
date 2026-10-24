@@ -9,7 +9,7 @@ pc cae dynamic -i //pub/feature/cae/code_aster:dynamic :bracket
 pc cae thermal -i //pub/feature/cae/code_aster:thermal :heatsink
 ```
 
-or name it for a part with `implementation:` in the part's analysis section, or for everything with the
+or name it for one of a part's scenarios with `implementation:` in it, or for everything with the
 `caeFeaImplementation`, `caeDynamicImplementation` and `caeThermalImplementation` user configuration options.
 
 There is no `cfd` here: Code_Aster has no viscous flow solver. EDF's is code_saturne -- see
@@ -17,9 +17,10 @@ There is no `cfd` here: Code_Aster has no viscous flow solver. EDF's is code_sat
 
 ## What each analysis reads
 
-Every key names interfaces the part implements, and is applied to the **faces each port covers**: PartCAD
-imprints a port's sketch on the part before this package runs; a port with no sketch covers the face it lies
-on.
+Each analysis reads its own section of the part, a map of named scenarios: `pc cae <analysis>` runs each, and
+`-f <scenario>` one. Every key names interfaces the part implements, and is applied to the **faces each port
+covers**: PartCAD imprints a port's sketch on the part before this package runs; a port with no sketch covers
+the face it lies on.
 
 | analysis | section keys | Code_Aster |
 | --- | --- | --- |
@@ -40,11 +41,11 @@ simulation measured is in newtons, so write the unit: `[0, -2.7, -155.2]` would 
 (`9.81 m/s^2`). The part's own weight is its mass, `density` times its volume, under that acceleration, in
 place of the 9.81 m/s² along -Z that `self_weight` applies otherwise; it is never a `load`.
 
-The model is `<part>.<analysis>.glb`, coloured by von Mises stress, by the first mode's displacement, or by
-temperature. A measurement line goes to the log, and **findings** fail `pc test`: a stress past the yield
-strength (or past it divided by `safety_factor`), a displacement past `max_displacement`, a first natural
-frequency under `min_frequency`, a temperature past `max_temperature`, and any condition whose port covers no
-surface.
+The model is `<part>.<analysis>.<scenario>.glb`, coloured by von Mises stress, by the first mode's
+displacement, or by temperature. A measurement line goes to the log, and **findings** fail `pc test`: a stress
+past the yield strength (or past it divided by `safety_factor`), a displacement past `max_displacement`, a
+first natural frequency under `min_frequency`, a temperature past `max_temperature`, and any condition whose
+port covers no surface.
 
 ### The pipeline
 
