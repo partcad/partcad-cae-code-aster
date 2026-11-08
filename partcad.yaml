@@ -5,7 +5,7 @@
 # means. What makes these analyses is the section they are declared in: `cae:`.
 # Each writes binary glTF, the result being a 3D field the Digital Thread turns
 # and zooms, and answers with `findings` beside it: an empty list is a pass, and
-# is what `pc test` requires.
+# is what `pc qual test` requires.
 #
 # Code_Aster has no viscous flow solver -- EDF's is code_saturne -- so there is
 # no `cfd` here.
