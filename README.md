@@ -41,10 +41,10 @@ simulation measured is in newtons, so write the unit: `[0, -2.7, -155.2]` would 
 place of the 9.81 m/s² along -Z that `self_weight` applies otherwise; it is never a `load`.
 
 The model is `<part>.<analysis>.glb`, coloured by von Mises stress, by the first mode's displacement, or by
-temperature. A measurement line goes to the log, and **findings** fail `pc test`: a stress past the yield
-strength (or past it divided by `safety_factor`), a displacement past `max_displacement`, a first natural
-frequency under `min_frequency`, a temperature past `max_temperature`, and any condition whose port covers no
-surface.
+temperature. A measurement line goes to the log, and **findings** fail `pc qual test`: a stress past the
+yield strength (or past it divided by `safety_factor`), a displacement past `max_displacement`, a first
+natural frequency under `min_frequency`, a temperature past `max_temperature`, and any condition whose port
+covers no surface.
 
 ### The pipeline
 
