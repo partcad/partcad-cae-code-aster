@@ -53,7 +53,7 @@ def _analyse(path, request):
 
     displacement = [aster.norm(value) for value in answer["displacement"]]
     stress = [value[0] for value in answer["von_mises"]]
-    aster.draw(path, mesh, aster.by_position({**answer, "s": stress}, "s", mesh), low=0.0)
+    aster.draw(path, mesh, aster.by_position({**answer, "s": stress}, "s", mesh), low=0.0, high=_top(request))
 
     peak_stress = max(stress)
     peak_displacement = max(displacement) * aster.MM_PER_M
@@ -62,8 +62,15 @@ def _analyse(path, request):
         "success": True,
         "findings": findings,
         "warnings": [
-            "Peak von Mises stress %.4g MPa, peak displacement %.4g mm, over %d elements"
-            % (peak_stress / 1e6, peak_displacement, mesh.element_count)
+            "Peak von Mises stress %.4g MPa (%.0f%% of the allowable %.3g MPa), peak displacement %.4g mm, "
+            "over %d elements"
+            % (
+                peak_stress / 1e6,
+                100.0 * peak_stress / _allowable(request),
+                _allowable(request) / 1e6,
+                peak_displacement,
+                mesh.element_count,
+            )
         ],
     }
 
@@ -140,12 +147,40 @@ def _gravity_of(request):
     return None
 
 
+def _allowable(request):
+    """The stress a part is held to: its yield strength over the safety factor, in Pa."""
+    yield_strength = float(request.get("yield_strength", 2.5e8))
+    safety_factor = float(request.get("safety_factor", 1.5))
+    return yield_strength / max(safety_factor, 1e-9)
+
+
+def _flag(value):
+    """A yes or a no, however a configuration wrote it."""
+    if isinstance(value, str):
+        return value.strip().lower() in ("1", "true", "yes", "on")
+    return bool(value)
+
+
+def _top(request):
+    """The stress the top of the colour ramp stands for: the allowable one, or None for this run's own peak.
+
+    Against its own peak, every run's hottest node is the same red, which is the
+    picture that shows *where* a part is loaded -- and the one in which a part
+    of steel and the same part of PLA look identical. Against the allowable
+    stress, red means "at what this part is held to" and anything past it stays
+    red: the same part looks cooler for being stronger, and two runs read on one
+    scale. The material decides the allowable, which is why a part that names
+    one PartCAD can resolve is coloured against its own.
+    """
+    return _allowable(request) if _flag(request.get("scale_to_allowable", False)) else None
+
+
 def _verdict(peak_stress, peak_displacement, request):
     """What the numbers mean, as findings: the thresholds the package configured."""
     findings = []
     yield_strength = float(request.get("yield_strength", 2.5e8))
     safety_factor = float(request.get("safety_factor", 1.5))
-    allowable = yield_strength / max(safety_factor, 1e-9)
+    allowable = _allowable(request)
     if peak_stress > yield_strength:
         findings.append(
             {
